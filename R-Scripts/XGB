@@ -1,0 +1,25 @@
+source_https <- function(url)
+{
+  library(RCurl)
+  eval(parse(text=getURL(url,followlocation=T,cainfo=system.file("CurlSSL","cacert.pem",package="RCurl"))),envir=.GlobalEnv)
+}
+
+source_https("https://raw.githubusercontent.com/rohanrao91/Models_CV/master/XGBoost.R")
+model_xgb_1 <- XGBoost(X_train,train_purchase,X_test,cv=5,objective="reg:linear",nrounds=500,max.depth=10,eta=0.1,colsample_bytree=0.5,seed=235,metric="rmse",importance=1)
+
+test_xgb_3 <- model_xgb_1[[2]]
+
+result <- as.data.frame(test_uid)
+names(result)[1] <-"User_ID"
+result$User_ID <- test_uid
+result$Product_ID <- test_pid
+
+result$Purchase <- (test_xgb_2$pred_xgb + test_xgb_1$pred_xgb)/3
+  #(test_xgb_2$pred_xgb + test_xgb_1$pred_xgb)/2
+
+purchase <- test_xgb_1$pred_xgb
+purchase <- purchase[purchase >23961] <-23961
+purchase <- purchase[purchase <185] <- 185
+
+write.csv(result,"BF_result.csv")
+
