@@ -1,0 +1,134 @@
+target <- train$Purchase
+train$Purchase <- NULL
+train$Purchase <-target
+
+
+test$X<- NULL
+test$Comb <-NULL
+
+all <- rbind(train,test)
+
+
+
+#Age
+all$Age[all$Age=="0-17"] <- 15
+all$Age[all$Age=="18-25"] <- 21
+all$Age[all$Age=="26-35"] <- 30
+all$Age[all$Age=="36-45"] <- 40
+all$Age[all$Age=="46-50"] <- 48
+all$Age[all$Age=="51-55"] <- 53
+all$Age[all$Age=="55+"] <- 60
+
+all$Age <- as.integer(all$Age)
+
+
+#Stay_In_Current_City_Years
+all$Stay_In_Current_City_Years[all$Stay_In_Current_City_Years== "4+"] <- 4
+all$Stay_In_Current_City_Years <- as.integer(all$Stay_In_Current_City_Years)
+
+#Product_Category
+all$Product_Category_2[is.na(all$Product_Category_2)] <- -999
+all$Product_Category_3[is.na(all$Product_Category_3)] <- -999
+
+#User_count
+user_count <- ddply(train, .(User_ID),nrow)
+names(user_count)[2]<-"User_Count"
+all <- merge(all,user_count,all.x=T, by ="User_ID")
+
+#Product_Count
+product_count <- ddply(train, .(Product_ID),nrow)
+names(product_count)[2]<-"Product_Count"
+all <- merge(all,product_count,all.x=T, by ="Product_ID")
+all$Product_Count[is.na(all$Product_Count)] <- 0
+
+#Avg Product Purchase
+AvgPurchase<-ddply(train, .(Product_ID), summarize, AvgPurchase = mean(Purchase[Product_ID == Product_ID]))
+all <- merge(all,AvgPurchase,all.x=T, by ="Product_ID")
+train <- merge(train,AvgPurchase,all.x=T, by ="Product_ID")
+
+all$AvgPurchase[is.na(all$AvgPurchase)] <- mean(train$Purchase)
+
+#User Prop
+train$flag_high <- ifelse(train$Purchase>train$AvgPurchase,1,0)
+user_prop<-ddply(train,~User_ID,summarize,User_Prop = mean(flag_high))
+
+all<-merge(all,user_prop,all.x=T,by="User_ID")
+
+
+
+#split data
+train <- merge(all,train[,c(1,2,12)],by=c("User_ID","Product_ID"))
+test <- merge(all,test[,c(1,2)],by=c("User_ID","Product_ID"))
+
+
+
+#Count categories
+cat1_count <- ddply(train, .(Product_Category_1),nrow)
+names(cat1_count)[2]<-"Category1_Count"
+train <- merge(train,cat1_count,all.x=T, by ="Product_Category_1")
+test <- merge(test,cat1_count,all.x=T, by ="Product_Category_1")
+
+cat2_count <- ddply(train, .(Product_Category_2),nrow)
+names(cat2_count)[2]<-"Category2_Count"
+train <- merge(train,cat2_count,all.x=T, by ="Product_Category_2")
+test <- merge(test,cat2_count,all.x=T, by ="Product_Category_2")
+
+cat3_count <- ddply(train, .(Product_Category_3),nrow)
+names(cat3_count)[2]<-"Category3_Count"
+train <- merge(train,cat3_count,all.x=T, by ="Product_Category_3")
+test <- merge(test,cat3_count,all.x=T, by ="Product_Category_3")
+
+#Avg Purchase per Category
+
+Cat1_AvgPurchase<-ddply(train, .(Product_Category_1), summarize, Cat1_AvgPurchase = mean(Purchase[Product_Category_1 == Product_Category_1]))
+train <- merge(train,Cat1_AvgPurchase,all.x=T, by ="Product_Category_1")
+test<- merge(test,Cat1_AvgPurchase,all.x=T, by ="Product_Category_1")
+
+
+Cat2_AvgPurchase<-ddply(train, .(Product_Category_2), summarize, Cat2_AvgPurchase = mean(Purchase[Product_Category_2 == Product_Category_2]))
+train <- merge(train,Cat2_AvgPurchase,all.x=T, by ="Product_Category_2")
+test<- merge(test,Cat2_AvgPurchase,all.x=T, by ="Product_Category_2")
+
+Cat3_AvgPurchase<-ddply(train, .(Product_Category_3), summarize, Cat3_AvgPurchase = mean(Purchase[Product_Category_3 == Product_Category_3]))
+train <- merge(train,Cat3_AvgPurchase,all.x=T, by ="Product_Category_3")
+test<- merge(test,Cat3_AvgPurchase,all.x=T, by ="Product_Category_3")
+
+
+train_pid <-train$Product_ID
+train_uid <- train$User_ID
+train_purchase <- train$Purchase 
+train$Product_ID<-NULL
+train$User_ID <- NULL
+train$Purchase <-NULL
+
+X_train <- model.matrix(~.,train)
+X_train <- X_train[,-1]
+
+
+test_pid <- test$Product_ID
+test_uid <- test$User_ID
+test$User_ID<-NULL
+test$Product_ID <-NULL
+
+
+X_test <- model.matrix(~.,test)
+X_test <- X_test[,-1]
+
+
+
+X_train <-as.data.frame(X_train)
+X_test <- as.data.frame(X_test)
+
+X_train$User_ID <-train_uid
+X_train$Product_ID <-train_pid
+
+#X_train <- subset(X_train, !Product_Category_1.x %in% c(19,20))
+
+X_train<- merge(X_train,target.lookup,by=c("User_ID","Product_ID"),all.x=T)
+
+target <- X_tn[,c(1,2,17)]
+X_train <- X_train[,-c(1,2,17)]
+X_tn <- X_tn[,-c(1,2,17)]
+
+
+X_tn <- X_train[!X_train$Product_Category_1.x %in% c(19,20),]
