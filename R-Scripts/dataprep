@@ -122,7 +122,7 @@ X_test <- as.data.frame(X_test)
 X_train$User_ID <-train_uid
 X_train$Product_ID <-train_pid
 
-#X_train <- subset(X_train, !Product_Category_1.x %in% c(19,20))
+##X_train <- subset(X_train, !Product_Category_1.x %in% c(19,20))
 
 X_train<- merge(X_train,target.lookup,by=c("User_ID","Product_ID"),all.x=T)
 
